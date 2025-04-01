@@ -32,14 +32,10 @@ pause_attive = "ON"
 
 # **🔹 Connessione all'API**
 account = PocketOptionAPI(SSID, trade_mode)
-input("\nPremi INVIO per continuare 1 ...")
-#if not account.connect():
-#    input("\nPremi INVIO per continuare 2 ...")
-#    print("⛔ Connessione non riuscita. Esco...")
+input("\nPremi INVIO per continuare...")
 
 print("✅ Connessione API riuscita!")
-input("\nPremi INVIO per continuare 3 ...")
-# sys.exit()
+
 # **🔹 Variabili di lavoro**
 trade_amount = importo_iniziale
 saldo_iniziale = 0
@@ -49,15 +45,14 @@ perdite_consecutive = 0
 saldo_sessione = 0
 
 # Funzione che legge i dati di saldo, trade_amount e payout
-
 def get_trading_data():
     """Recupera saldo e payout con delay per evitare blocchi API"""
     try:
         time.sleep(1)
         balance = account.get_balance()
         payout = account.get_payout()
-        asset = get_best_asset(false) # beccare cmq il nome dell'asset che potrebbe essere cambiato
-        print(f"✅ Saldo: {balance}, Payout: {payout}%", Asset: {asset} )
+        asset = get_best_asset(False)
+        print(f"✅ Saldo: {balance}, Payout: {payout}%, Asset: {asset}")
         return float(balance), int(payout), asset
     except Exception as e:
         print(f"❌ Errore nel recupero dati trading: {e}")
@@ -65,27 +60,31 @@ def get_trading_data():
 
 def get_best_asset(cambio):
     """
-    Seleziona il primo asset disponibile con payout più alto, evitando l'asset attivo, o forza il cambio se richiesto.
+    Seleziona il miglior asset disponibile con payout più alto e conforme al tipo_asset.
+    Se il tipo_asset è "OTC", seleziona solo asset con "OTC" nel nome.
     """
     try:
         assets = account.get_assets()
-        sorted_assets = sorted(assets.items(), key=lambda x: x[1]["payout"], reverse=True)
         
-        asset_attuale = account.get_active_asset()  # Supponiamo che questa API esista
+        # Filtra gli asset in base al tipo specificato
+        if tipo_asset == "OTC":
+            filtered_assets = {asset: data for asset, data in assets.items() if "OTC" in asset}
+        else:
+            filtered_assets = {asset: data for asset, data in assets.items() if "OTC" not in asset}
+
+        # Ordina gli asset filtrati per payout decrescente
+        sorted_assets = sorted(filtered_assets.items(), key=lambda x: x[1]["payout"], reverse=True)
+        
+        asset_attuale = account.get_active_asset()
         
         # Controlla se il payout dell'asset attuale è inferiore al minimo_payout o se è richiesto il cambio
         if cambio or assets[asset_attuale]['payout'] < minimo_payout:
-            nuovo_asset = None
             for asset, data in sorted_assets:
                 if asset != asset_attuale and data["open"]:
-                    nuovo_asset = asset
-                    break
-            if nuovo_asset:
-                print(f"✅ Nuovo asset selezionato: {nuovo_asset}")
-                return nuovo_asset
-            else:
-                print("⚠️ Nessun nuovo asset disponibile, mantengo l'attuale.")
-                return asset_attuale
+                    print(f"✅ Nuovo asset selezionato: {asset}")
+                    return asset
+            print("⚠️ Nessun nuovo asset disponibile del tipo specificato, mantengo l'attuale.")
+            return asset_attuale
         else:
             print(f"⚠️ Payout attuale ({assets[asset_attuale]['payout']}%) è sufficiente, mantengo l'asset attuale.")
             return asset_attuale
@@ -94,23 +93,8 @@ def get_best_asset(cambio):
         print(f"❌ Errore nella selezione dell'asset: {e}")
         return asset_attuale
 
-# Funzione per piazzare un trade
-
-def place_trade(direzione, trade_amount):
-    """Piazza un trade utilizzando l'API."""
-    try:
-        asset = tipo_asset
-        duration = scadenza
-        trade_info = account.place_trade(asset, trade_amount, direzione, duration)
-        print(f"✅ Trade {direzione.upper()} eseguito con importo {trade_amount}")
-        time.sleep(duration)
-        return trade_info
-    except Exception as e:
-        print(f"❌ Errore nel piazzamento del trade: {e}")
-        return None
-
 def primo_trade():
-    global saldo_iniziale, saldo_attuale, trade_amount
+    global saldo_iniziale, saldo_attuale, trade_amount, perdite_consecutive, direzione
     saldo_iniziale, _, _ = get_trading_data()
     if saldo_iniziale is None:
         return
@@ -125,80 +109,47 @@ def primo_trade():
         perdite_consecutive = 1
         if perdite_consecutive == max_losses:
             direzione = "SELL" if direzione == "BUY" else "BUY"
-
-        # Incremento del trade_amount
-        if fattore_incremento:
-            trade_amount = round(float(trade_amount) * float(fattore_incremento), 2)
-        else:
-            trade_amount = round(float(trade_amount) + float(incremento_fisso), 2)
+        trade_amount = round(float(trade_amount) * float(fattore_incremento), 2)
     else:
         print("✅ Trade vinto, riprendo ciclo...")
         primo_trade()
 
 def martingala():
-    global saldo_iniziale, saldo_single, trade_amount, perdite_consecutive, saldo_attuale 
-    payout_attuale, profitto, prof_sessione
-
+    global saldo_iniziale, saldo_attuale, trade_amount, perdite_consecutive, direzione
     ciclo_martingala = True
     while ciclo_martingala:
-        saldo_single = saldo_attuale  # Per stabilire la singola perdita o vincita
-
+        saldo_single = saldo_attuale
         place_trade(direzione, trade_amount)
-        saldo_attuale, _, asset = get_trading_data()
-
-        if saldo_attuale is None or trade_amount is None or payout_attuale is None:
-            print("❌ Errore nel recupero dei dati di trading, riprovo...")
+        saldo_attuale, _, _ = get_trading_data()
+        if saldo_attuale is None:
+            print("❌ Errore nel recupero dati di trading, riprovo...")
             time.sleep(2)
             continue
-
-        try:
-            saldo_attuale = float(saldo_attuale)
-
-            profitto = saldo_attuale - saldo_iniziale
-            prof_sessione = saldo_attuale - saldo_sessione
- 
-            if saldo_single > saldo_attuale:
-                perdite_consecutive += 1
-                # Incremento del trade_amount
-                incremento == fattore_incremento * trade_amount - trade_amount
-                if incremento <= max_incremento and fattore_incremento:
-                    trade_amount = round(float(trade_amount) * float(fattore_incremento), 2)
-                else:
-                    trade_amount = round(float(trade_amount) + float(incremento_fisso), 2)
-                if perdite_consecutive == max_losses:
-                    direzione = "SELL" if direzione == "BUY" else "BUY"
+        if saldo_single > saldo_attuale:
+            perdite_consecutive += 1
+            incremento = fattore_incremento * trade_amount - trade_amount
+            if incremento <= max_incremento:
+                trade_amount = round(float(trade_amount) * float(fattore_incremento), 2)
             else:
-                perdite_consecutive = 0
+                trade_amount = round(float(trade_amount) + float(incremento_fisso), 2)
+            if perdite_consecutive == max_losses:
+                direzione = "SELL" if direzione == "BUY" else "BUY"
+        else:
+            perdite_consecutive = 0
+        if saldo_attuale - saldo_iniziale >= margine_richiesto:
+            print("✅ Margine raggiunto, reset della strategia!")
+            trade_amount = importo_iniziale
+            saldo_iniziale = saldo_attuale
+            perdite_consecutive = 0
+            ciclo_martingala = False
+            break
+        if saldo_attuale - saldo_sessione <= -stop_loss or saldo_attuale - saldo_sessione >= take_profit:
+            print("⛔ Stop loss o take profit raggiunto, fermo il bot!")
+            break
 
-            print(f"✍️ perdite_consecutive = {perdite_consecutive}")        
-
-            if profitto >= float(config["margine_richiesto"]):
-                print("\n✅ Margine richiesto raggiunto, reset della strategia!")
-                trade_amount = importo_iniziale
-                saldo_iniziale = saldo_attuale  # Aggiorna il saldo iniziale
-                perdite_consecutive = 0
-                profitto = 0
-
-                ciclo_martingala = False
-                break
-        
-            if prof_sessione <= -stop_loss or prof_sessione >= take_profit:
-                print("\n⛔ Stop loss o take profit raggiunto, fermo il bot!")
-                break
- 
-            if perdite_consecutive >= float(config["max_losses"]):
-                print("\n⚠️ Troppi trade persi, seleziono un nuovo asset...")
-                get_best_asset()
-                perdite_consecutive = 0
-                continue
-
-        except ValueError:
-            continueaccount = PocketOptionAPI(SSID, trade_mode)
-
-# Funzione principale
 def main():
     global saldo_sessione, saldo_iniziale, payout_attuale
-    asset = get_best_asset(true)
+    asset = get_best_asset(True)
     saldo_iniziale, payout_attuale, _ = get_trading_data()
     print(f"💰 Saldo iniziale: {saldo_iniziale}, Payout: {payout_attuale}, Asset: {asset}")
     if saldo_iniziale is None:
@@ -208,6 +159,7 @@ def main():
     primo_trade()
 
 main()
+
 #====================================================================
 
 #***********************************************************************
