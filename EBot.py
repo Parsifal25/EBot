@@ -155,11 +155,8 @@ def martingala():
             print("⛔ Stop loss o take profit raggiunto, fermo il bot!")
             break
 
-        # se le perdite superano le vincite più della %ale ammessa si cambia asset
-        totale_trade = tot_persi + tot_vinti
-        if totale_trade <> 0:
-            percentuale_persi = (tot_persi / totale_trade) * 100
-        if percentuale_persi >= tot_losses:
+        # se le perdite superano le vincite per più tot_losses si cambia asset
+        if tot_persi - tot_vinti > tot_losses:
             asset = get_best_asset(True)
 
 #*********************************************
