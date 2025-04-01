@@ -25,7 +25,7 @@ scadenza = 10
 take_profit = 1000
 stop_loss = 200
 max_losses = 3
-tot_losses = 30%
+tot_losses = 30
 adatta_importo = "OFF"
 orari_di_lavoro = "09:00-12:00,14:00-18:00"
 pausa = "1-15"
@@ -107,11 +107,16 @@ def primo_trade():
         return
     if saldo_attuale < saldo_iniziale:
         print("❌ Trade perso, avvio Martingala...")
+        if fattore_incremento:
+            trade_amount = round(float(trade_amount) * float(fattore_incremento), 2)
+        else:
+            trade_amount = round(float(trade_amount) + float(incremento_fisso), 2)
         perdite_consecutive = 1
         if perdite_consecutive == max_losses:
             direzione = "SELL" if direzione == "BUY" else "BUY"
-        trade_amount = round(float(trade_amount) * float(fattore_incremento), 2)
-    else:
+            perdite_consecutive = 0
+        martingala()  
+     else:
         print("✅ Trade vinto, riprendo ciclo...")
         primo_trade()
 
@@ -132,8 +137,8 @@ def martingala():
         if saldo_single > saldo_attuale:
             perdite_consecutive += 1
             tot_persi += 1
-            incremento = fattore_incremento * trade_amount - trade_amount
-            if incremento <= max_incremento:
+            incremento = (fattore_incremento * trade_amount) - trade_amount
+            if fattore_incremento and incremento <= max_incremento :
                 trade_amount = round(float(trade_amount) * float(fattore_incremento), 2)
             else:
                 trade_amount = round(float(trade_amount) + float(incremento_fisso), 2)
@@ -155,7 +160,7 @@ def martingala():
             print("⛔ Stop loss o take profit raggiunto, fermo il bot!")
             break
 
-        # se le perdite superano le vincite per più tot_losses si cambia asset
+        # se le perdite superano le vincite per più di tot_losses si cambia asset
         if tot_persi - tot_vinti > tot_losses:
             asset = get_best_asset(True)
 
@@ -172,6 +177,10 @@ def main():
     primo_trade()
 
 main()
+
+#====================================================================
+
+#***********************************************************************
 
 #====================================================================
 
