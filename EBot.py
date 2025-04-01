@@ -56,33 +56,38 @@ def get_trading_data():
         time.sleep(1)
         balance = account.get_balance()
         payout = account.get_payout()
-        if payout :< minimo_payout:
-            asset = get_best_asset()
+        asset = get_best_asset(false) # beccare cmq il nome dell'asset che potrebbe essere cambiato
         print(f"✅ Saldo: {balance}, Payout: {payout}%", Asset: {asset} )
         return float(balance), int(payout), asset
     except Exception as e:
         print(f"❌ Errore nel recupero dati trading: {e}")
         return None, None, None
 
-def get_best_asset():
-    """Seleziona il primo asset disponibile con payout più alto, evitando l'asset attivo"""
+def get_best_asset(cambio):
+    """
+    Seleziona il primo asset disponibile con payout più alto, evitando l'asset attivo, o forza il cambio se richiesto.
+    """
     try:
         assets = account.get_assets()
         sorted_assets = sorted(assets.items(), key=lambda x: x[1]["payout"], reverse=True)
-
+        
         asset_attuale = account.get_active_asset()  # Supponiamo che questa API esista
-
-        nuovo_asset = None
-        for asset, data in sorted_assets:
-            if asset != asset_attuale and data["open"]:
-                nuovo_asset = asset
-                break
-
-        if nuovo_asset:
-            print(f"✅ Nuovo asset selezionato: {nuovo_asset}")
-            return nuovo_asset
+        
+        # Controlla se il payout dell'asset attuale è inferiore al minimo_payout o se è richiesto il cambio
+        if cambio or assets[asset_attuale]['payout'] < minimo_payout:
+            nuovo_asset = None
+            for asset, data in sorted_assets:
+                if asset != asset_attuale and data["open"]:
+                    nuovo_asset = asset
+                    break
+            if nuovo_asset:
+                print(f"✅ Nuovo asset selezionato: {nuovo_asset}")
+                return nuovo_asset
+            else:
+                print("⚠️ Nessun nuovo asset disponibile, mantengo l'attuale.")
+                return asset_attuale
         else:
-            print("⚠️ Nessun nuovo asset disponibile, mantengo l'attuale.")
+            print(f"⚠️ Payout attuale ({assets[asset_attuale]['payout']}%) è sufficiente, mantengo l'asset attuale.")
             return asset_attuale
 
     except Exception as e:
@@ -106,13 +111,13 @@ def place_trade(direzione, trade_amount):
 
 def primo_trade():
     global saldo_iniziale, saldo_attuale, trade_amount
-    saldo_iniziale, _ = get_trading_data()
+    saldo_iniziale, _, _ = get_trading_data()
     if saldo_iniziale is None:
         return
     trade_amount = importo_iniziale
     place_trade(direzione, trade_amount)
     time.sleep(scadenza)
-    saldo_attuale, _ = get_trading_data()
+    saldo_attuale, _, _ = get_trading_data()
     if saldo_attuale is None:
         return
     if saldo_attuale < saldo_iniziale:
@@ -139,15 +144,13 @@ def martingala():
         saldo_single = saldo_attuale  # Per stabilire la singola perdita o vincita
 
         place_trade(direzione, trade_amount)
-        saldo_attuale, _= get_trading_data()
+        saldo_attuale, _, asset = get_trading_data()
 
         if saldo_attuale is None or trade_amount is None or payout_attuale is None:
             print("❌ Errore nel recupero dei dati di trading, riprovo...")
             time.sleep(2)
             continue
 
-#        direzione = inverti_direzione()
-        
         try:
             saldo_attuale = float(saldo_attuale)
 
@@ -195,8 +198,9 @@ def martingala():
 # Funzione principale
 def main():
     global saldo_sessione, saldo_iniziale, payout_attuale
-    saldo_iniziale, payout_attuale, asset = get_trading_data()
-    print(f"💰 Saldo iniziale: {saldo_iniziale}, Payout: {payout_attuale}")
+    asset = get_best_asset(true)
+    saldo_iniziale, payout_attuale, _ = get_trading_data()
+    print(f"💰 Saldo iniziale: {saldo_iniziale}, Payout: {payout_attuale}, Asset: {asset}")
     if saldo_iniziale is None:
         print("⚠️ Errore: impossibile recuperare il saldo iniziale. Uscita dal bot.")
         return
