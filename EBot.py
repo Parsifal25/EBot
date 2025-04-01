@@ -17,12 +17,11 @@ importo_iniziale = 1
 direzione = "BUY"
 tipo_asset = "OTC"
 fattore_incremento = 1.1
+max_incremento = 2
 incremento_fisso = 1.5
 margine_richiesto = 2
 minimo_payout = 90
 scadenza = 10
-inverti_se_perde = "OFF"
-inverti_se_vince = "OFF"
 take_profit = 1000
 stop_loss = 200
 max_losses = 3
@@ -56,12 +55,14 @@ def get_trading_data():
     try:
         time.sleep(1)
         balance = account.get_balance()
-        payout = minimo_payout  # Se l'API non fornisce il payout, usa il minimo
-        print(f"✅ Saldo: {balance}, Payout: {payout}%")
-        return float(balance), int(payout)
+        payout = account.get_payout()
+        if payout :< minimo_payout:
+            asset = get_best_asset()
+        print(f"✅ Saldo: {balance}, Payout: {payout}%", Asset: {asset} )
+        return float(balance), int(payout), asset
     except Exception as e:
         print(f"❌ Errore nel recupero dati trading: {e}")
-        return None, None
+        return None, None, None
 
 def get_best_asset():
     """Seleziona il primo asset disponibile con payout più alto, evitando l'asset attivo"""
@@ -87,18 +88,6 @@ def get_best_asset():
     except Exception as e:
         print(f"❌ Errore nella selezione dell'asset: {e}")
         return asset_attuale
-
-def inverti_direzione():
-    global saldo_iniziale, saldo_attuale, direzione, inverti_se_perde, inverti_se_vince
-    if saldo_attuale is None:
-        return direzione
-    if saldo_attuale < saldo_iniziale and inverti_se_perde == "ON":
-        direzione = "SELL" if direzione == "BUY" else "BUY"
-        print(f"🔄 Inversione per perdita, nuova direzione: {direzione}")
-    elif saldo_attuale > saldo_iniziale and inverti_se_vince == "ON":
-        direzione = "SELL" if direzione == "BUY" else "BUY"
-        print(f"🔄 Inversione per vincita, nuova direzione: {direzione}")
-    return direzione
 
 # Funzione per piazzare un trade
 
@@ -128,6 +117,10 @@ def primo_trade():
         return
     if saldo_attuale < saldo_iniziale:
         print("❌ Trade perso, avvio Martingala...")
+        perdite_consecutive = 1
+        if perdite_consecutive == max_losses:
+            direzione = "SELL" if direzione == "BUY" else "BUY"
+
         # Incremento del trade_amount
         if fattore_incremento:
             trade_amount = round(float(trade_amount) * float(fattore_incremento), 2)
@@ -143,33 +136,17 @@ def martingala():
 
     ciclo_martingala = True
     while ciclo_martingala:
-        try:
-
-            # Incremento del trade_amount
-            if fattore_incremento:
-                trade_amount = round(float(trade_amount) * float(fattore_incremento), 2)
-            else:
-                trade_amount = round(float(trade_amount) + float(incremento_fisso), 2)
-         
-        except ValueError as ve:
-            print(f"❌ Errore di valore: {ve}")
-            continue
-        except Exception as e:
-            print(f"❌ Errore inatteso nell'incremento dell'importo: {e}")
-            continue
-        
         saldo_single = saldo_attuale  # Per stabilire la singola perdita o vincita
 
         place_trade(direzione, trade_amount)
-        
-        saldo_attuale, payout_attuale = get_trading_data()
+        saldo_attuale, _= get_trading_data()
 
         if saldo_attuale is None or trade_amount is None or payout_attuale is None:
             print("❌ Errore nel recupero dei dati di trading, riprovo...")
             time.sleep(2)
             continue
 
-        direzione = inverti_direzione()
+#        direzione = inverti_direzione()
         
         try:
             saldo_attuale = float(saldo_attuale)
@@ -179,13 +156,16 @@ def martingala():
  
             if saldo_single > saldo_attuale:
                 perdite_consecutive += 1
+                # Incremento del trade_amount
+                incremento == fattore_incremento * trade_amount - trade_amount
+                if incremento <= max_incremento and fattore_incremento:
+                    trade_amount = round(float(trade_amount) * float(fattore_incremento), 2)
+                else:
+                    trade_amount = round(float(trade_amount) + float(incremento_fisso), 2)
+                if perdite_consecutive == max_losses:
+                    direzione = "SELL" if direzione == "BUY" else "BUY"
             else:
                 perdite_consecutive = 0
-        # Incremento del trade_amount
-            if fattore_incremento:
-                trade_amount = round(float(trade_amount) * float(fattore_incremento), 2)
-            else:
-                trade_amount = round(float(trade_amount) + float(incremento_fisso), 2)
 
             print(f"✍️ perdite_consecutive = {perdite_consecutive}")        
 
@@ -215,7 +195,7 @@ def martingala():
 # Funzione principale
 def main():
     global saldo_sessione, saldo_iniziale, payout_attuale
-    saldo_iniziale, payout_attuale = get_trading_data()
+    saldo_iniziale, payout_attuale, asset = get_trading_data()
     print(f"💰 Saldo iniziale: {saldo_iniziale}, Payout: {payout_attuale}")
     if saldo_iniziale is None:
         print("⚠️ Errore: impossibile recuperare il saldo iniziale. Uscita dal bot.")
