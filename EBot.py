@@ -25,6 +25,7 @@ scadenza = 10
 take_profit = 1000
 stop_loss = 200
 max_losses = 3
+tot_losses = 30%
 adatta_importo = "OFF"
 orari_di_lavoro = "09:00-12:00,14:00-18:00"
 pausa = "1-15"
@@ -116,6 +117,8 @@ def primo_trade():
 
 def martingala():
     global saldo_iniziale, saldo_attuale, trade_amount, perdite_consecutive, direzione
+    tot_vinti = 0
+    tot_persi = 1
     ciclo_martingala = True
     while ciclo_martingala:
         saldo_single = saldo_attuale
@@ -125,8 +128,10 @@ def martingala():
             print("❌ Errore nel recupero dati di trading, riprovo...")
             time.sleep(2)
             continue
+        
         if saldo_single > saldo_attuale:
             perdite_consecutive += 1
+            tot_persi += 1
             incremento = fattore_incremento * trade_amount - trade_amount
             if incremento <= max_incremento:
                 trade_amount = round(float(trade_amount) * float(fattore_incremento), 2)
@@ -136,6 +141,8 @@ def martingala():
                 direzione = "SELL" if direzione == "BUY" else "BUY"
         else:
             perdite_consecutive = 0
+            tot_vinti += 1
+        
         if saldo_attuale - saldo_iniziale >= margine_richiesto:
             print("✅ Margine raggiunto, reset della strategia!")
             trade_amount = importo_iniziale
@@ -143,10 +150,19 @@ def martingala():
             perdite_consecutive = 0
             ciclo_martingala = False
             break
+        
         if saldo_attuale - saldo_sessione <= -stop_loss or saldo_attuale - saldo_sessione >= take_profit:
             print("⛔ Stop loss o take profit raggiunto, fermo il bot!")
             break
 
+        # se le perdite superano le vincite più della %ale ammessa si cambia asset
+        totale_trade = tot_persi + tot_vinti
+        if totale_trade <> 0:
+            percentuale_persi = (tot_persi / totale_trade) * 100
+        if percentuale_persi >= tot_losses:
+            asset = get_best_asset(True)
+
+#*********************************************
 def main():
     global saldo_sessione, saldo_iniziale, payout_attuale
     asset = get_best_asset(True)
