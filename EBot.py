@@ -17,7 +17,6 @@ importo_iniziale = 1
 direzione = "BUY"
 tipo_asset = "OTC"
 fattore_incremento = 1.1
-max_incremento = 2
 incremento_fisso = 1.5
 margine_richiesto = 2
 minimo_payout = 90
@@ -138,7 +137,7 @@ def martingala():
             perdite_consecutive += 1
             tot_persi += 1
             incremento = (fattore_incremento * trade_amount) - trade_amount
-            if fattore_incremento and incremento <= max_incremento :
+            if fattore_incremento and incremento <= incremento_fisso:
                 trade_amount = round(float(trade_amount) * float(fattore_incremento), 2)
             else:
                 trade_amount = round(float(trade_amount) + float(incremento_fisso), 2)
