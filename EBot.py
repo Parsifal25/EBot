@@ -155,7 +155,7 @@ def martingala():
             ciclo_martingala = False
             break
         
-        if saldo_attuale - saldo_sessione <= -stop_loss or saldo_attuale - saldo_sessione >= take_profit:
+        if saldo_attuale - saldo_sessione <= -stop_loss or >= take_profit:
             print("⛔ Stop loss o take profit raggiunto, fermo il bot!")
             break
 
@@ -163,7 +163,6 @@ def martingala():
         if tot_persi - tot_vinti > tot_losses:
             asset = get_best_asset(True)
 
-#*********************************************
 def main():
     global saldo_sessione, saldo_iniziale, payout_attuale
     asset = get_best_asset(True)
@@ -176,10 +175,6 @@ def main():
     primo_trade()
 
 main()
-
-#====================================================================
-
-#***********************************************************************
 
 #====================================================================
 
