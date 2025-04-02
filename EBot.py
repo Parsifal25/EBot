@@ -177,5 +177,46 @@ def main():
 main()
 
 #====================================================================
+# collegamento alla corretta piattaforma tramite API
+import requests
+
+# Endpoint API di esempio
+api_base_url = "https://api.pocketoption.com"
+
+# Autenticazione e ottenimento del token di accesso
+def authenticate(api_key, api_secret):
+    response = requests.post(f"{api_base_url}/auth", data={
+        "api_key": api_key,
+        "api_secret": api_secret
+    })
+    response_data = response.json()
+    return response_data["access_token"]
+
+# Ottenere le piattaforme disponibili
+def get_platforms(access_token):
+    headers = {"Authorization": f"Bearer {access_token}"}
+    response = requests.get(f"{api_base_url}/platforms", headers=headers)
+    return response.json()
+
+# Selezionare la piattaforma desiderata
+def select_platform(access_token, platform_name):
+    platforms = get_platforms(access_token)
+    for platform in platforms:
+        if platform["name"] == platform_name:
+            return platform["id"]
+    raise ValueError("Piattaforma non trovata")
+
+# Funzione principale
+def main():
+    api_key = "your_api_key"
+    api_secret = "your_api_secret"
+    
+    access_token = authenticate(api_key, api_secret)
+    platform_id = select_platform(access_token, "quick trade demo")
+    
+    print(f"ID della piattaforma selezionata: {platform_id}")
+
+if __name__ == "__main__":
+    main()
 
 #***********************************************************************
