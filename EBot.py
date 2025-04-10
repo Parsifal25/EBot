@@ -16,16 +16,15 @@ SSID = "bc3b9995-ab06-4685-8de2-01897d363c8e"
 importo_iniziale = 1
 direzione = "BUY"
 tipo_asset = "OTC"
-fattore_incremento = 1.1
+fattore_incremento = 1.5
 incremento_fisso = 1.5
-margine_richiesto = 2
-minimo_payout = 90
+margine_richiesto = 1
+minimo_payout = 91
 scadenza = 10
 take_profit = 1000
 stop_loss = 200
-max_losses = 3
+max_losses = 1
 tot_losses = 30
-adatta_importo = "OFF"
 orari_di_lavoro = "09:00-12:00,14:00-18:00"
 pausa = "1-15"
 pause_attive = "ON"
@@ -144,6 +143,7 @@ def martingala():
             if perdite_consecutive == max_losses:
                 direzione = "SELL" if direzione == "BUY" else "BUY"
         else:
+            trade_amount = round(float(trade_amount) * -float(fattore_incremento), 2)
             perdite_consecutive = 0
             tot_vinti += 1
         
