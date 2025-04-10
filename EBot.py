@@ -13,16 +13,16 @@ from BinaryOptionsTools.platforms.pocketoption.api import PocketOptionAPI
 # **🔹 Configurazione manuale**
 trade_mode = "DEMO"  # Può essere "DEMO" o "REAL"
 SSID = "bc3b9995-ab06-4685-8de2-01897d363c8e"
-importo_iniziale = 1
-margine_richiesto = 1
-direzione = "BUY"
 tipo_asset = "OTC"
-fattore_incremento = 1.5
-incremento_fisso = 5
 minimo_payout = 91
-scadenza = 10
 take_profit = 200
 stop_loss = 200
+scadenza = 5
+importo_iniziale = 1
+margine_richiesto = 1
+fattore_incremento = 1.5
+incremento_fisso = 5
+direzione = "BUY"
 cons_loss = 1
 loss-win = 10
 
