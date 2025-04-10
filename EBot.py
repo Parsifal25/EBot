@@ -14,20 +14,17 @@ from BinaryOptionsTools.platforms.pocketoption.api import PocketOptionAPI
 trade_mode = "DEMO"  # Può essere "DEMO" o "REAL"
 SSID = "bc3b9995-ab06-4685-8de2-01897d363c8e"
 importo_iniziale = 1
+margine_richiesto = 1
 direzione = "BUY"
 tipo_asset = "OTC"
 fattore_incremento = 1.5
-incremento_fisso = 1.5
-margine_richiesto = 1
+incremento_fisso = 5
 minimo_payout = 91
 scadenza = 10
-take_profit = 1000
+take_profit = 200
 stop_loss = 200
-max_losses = 1
-tot_losses = 30
-orari_di_lavoro = "09:00-12:00,14:00-18:00"
-pausa = "1-15"
-pause_attive = "ON"
+cons_loss = 1
+loss-win = 10
 
 # **🔹 Connessione all'API**
 account = PocketOptionAPI(SSID, trade_mode)
@@ -110,7 +107,7 @@ def primo_trade():
         else:
             trade_amount = round(float(trade_amount) + float(incremento_fisso), 2)
         perdite_consecutive = 1
-        if perdite_consecutive == max_losses:
+        if perdite_consecutive == cons_loss:
             direzione = "SELL" if direzione == "BUY" else "BUY"
             perdite_consecutive = 0
         martingala()  
@@ -140,7 +137,7 @@ def martingala():
                 trade_amount = round(float(trade_amount) * float(fattore_incremento), 2)
             else:
                 trade_amount = round(float(trade_amount) + float(incremento_fisso), 2)
-            if perdite_consecutive == max_losses:
+            if perdite_consecutive == cons_loss:
                 direzione = "SELL" if direzione == "BUY" else "BUY"
         else:
             trade_amount = round(float(trade_amount) * -float(fattore_incremento), 2)
@@ -159,8 +156,8 @@ def martingala():
             print("⛔ Stop loss o take profit raggiunto, fermo il bot!")
             break
 
-        # se le perdite superano le vincite per più di tot_losses si cambia asset
-        if tot_persi - tot_vinti > tot_losses:
+        # se le perdite superano le vincite per più di loss-win si cambia asset
+        if (tot_persi - tot_vinti) > loss-win:
             asset = get_best_asset(True)
 
 def main():
