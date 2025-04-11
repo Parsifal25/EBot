@@ -24,7 +24,7 @@ fattore_incremento = 1.5
 incremento_fisso = 5
 direzione = "BUY"
 cons_loss = 1
-loss-win = 10
+loss-win = 5
 
 # **🔹 Connessione all'API**
 account = PocketOptionAPI(SSID, trade_mode)
@@ -147,6 +147,7 @@ def martingala():
     global saldo_iniziale, saldo_attuale, trade_amount, perdite_consecutive, direzione
     tot_vinti = 0
     tot_persi = 1
+    max_loss = cons_loss
     ciclo_martingala = True
     while ciclo_martingala:
         saldo_single = saldo_attuale
@@ -165,7 +166,7 @@ def martingala():
                 trade_amount = round(float(trade_amount) * float(fattore_incremento), 2)
             else:
                 trade_amount = round(float(trade_amount) + float(incremento_fisso), 2)
-            if perdite_consecutive >= cons_loss:
+            if perdite_consecutive >= max_loss:
                 direzione = "SELL" if direzione == "BUY" else "BUY"
         else:
             trade_amount = round(float(trade_amount) * -float(fattore_incremento), 2)
@@ -186,7 +187,8 @@ def martingala():
 
         # se le perdite superano le vincite per più di loss-win si cambia asset
         if (tot_persi - tot_vinti) > loss-win:
-            asset = get_best_asset(True)
+            max_loss += 1
+        #    asset = get_best_asset(True)
 
 def main():
     global saldo_sessione, saldo_iniziale, payout_attuale
