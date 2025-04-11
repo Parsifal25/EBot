@@ -89,7 +89,34 @@ def get_best_asset(cambio):
     except Exception as e:
         print(f"❌ Errore nella selezione dell'asset: {e}")
         return asset_attuale
+        
+def place_trade(api, direzione, trade_amount):
+    """
+    Funzione per piazzare un trade tramite l'API Pocket Option.
 
+    Args:
+        api: Oggetto API per interagire con Pocket Option.
+        direzione (str): La direzione del trade, "BUY" o "SELL".
+        trade_amount (float): L'importo del trade.
+
+    Returns:
+        dict: Risultato del trade dall'API.
+    """
+    try:
+        # Piazzamento del trade
+        result = api.place_trade(direction=direzione.upper(), amount=trade_amount)
+
+        if result.get("success"):
+            print(f"✅ Trade piazzato con successo: {trade_amount} in direzione {direzione}")
+        else:
+            print(f"❌ Errore nel piazzamento del trade: {result.get('error', 'Errore sconosciuto')}")
+
+        return result
+
+    except Exception as e:
+        print(f"❌ Eccezione durante il piazzamento del trade: {e}")
+        return {"success": False, "error": str(e)}  
+        
 def primo_trade():
     global saldo_iniziale, saldo_attuale, trade_amount, perdite_consecutive, direzione
     saldo_iniziale, _, _ = get_trading_data()
