@@ -36,9 +36,10 @@ print("✅ Connessione API riuscita!")
 trade_amount = importo_iniziale
 saldo_iniziale = 0
 saldo_attuale = 0
+saldo_sessione = 0
 payout_attuale = 0
 perdite_consecutive = 0
-saldo_sessione = 0
+
 
 # Funzione che legge i dati di saldo, trade_amount e payout
 def get_trading_data():
@@ -137,7 +138,7 @@ def martingala():
                 trade_amount = round(float(trade_amount) * float(fattore_incremento), 2)
             else:
                 trade_amount = round(float(trade_amount) + float(incremento_fisso), 2)
-            if perdite_consecutive == cons_loss:
+            if perdite_consecutive >= cons_loss:
                 direzione = "SELL" if direzione == "BUY" else "BUY"
         else:
             trade_amount = round(float(trade_amount) * -float(fattore_incremento), 2)
